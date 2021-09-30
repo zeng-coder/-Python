@@ -1,49 +1,76 @@
 import requests
+import json
+from requests.sessions import session
 
-cookies = {
-    'SESSION': '',#填写你抓包得到的SEESION
-    'path': '/',
-}
-
-headers = {
-    'Host': 'student.wozaixiaoyuan.com',
-    'Content-Type': 'application/x-www-form-urlencoded',
-    'Accept': '*/*',
-    'Accept-Language': 'zh-cn',
-    'Accept-Encoding': 'gzip, deflate, br',
-    'Connection': 'keep-alive',
-    'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 13_5_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/7.0.17(0x17001126) NetType/4G Language/zh_CN',
-    'Referer': 'https://servicewechat.com/wxce6d08f781975d91/147/page-frame.html',
-    'token': '',#此处填写token
-    'Content-Length': '340',
-}
-
-data = {
-  'answers': '["0","36.5","36.5","36.5"]',#这是提交的每个选项 0 是无异常  36.5 是36.5度
-  'latitude': '',#经度
-  'longitude': '',#纬度
-  'country': '\u4E2D\u56FD',#国家
-  'city': '\u9EC4\u77F3\u5E02',#黄石市
-  'district': '\u4E0B\u9646\u533A',#下陆区
-  'province': '\u6E56\u5317\u7701',#湖北省
-  'township': '\u56E2\u57CE\u5C71\u8857\u9053',#团城山街道
-  'street': '\u78C1\u6E56\u8DEF',#团城山
-  'areacode': '420204'
-}
-
-def Autodo():
-    response = requests.post('https://student.wozaixiaoyuan.com/health/save.json', headers=headers, cookies=cookies, data=data).json()
-    r=response['code']
-    if(r==0):
-       #requests.get('https://sc.ftqq.com/此处填写你的Serve酱SCKEY.send?text=签到成功&desp=明天继续自动签到噢~')
+username=""
+password=""
+def login(username,password):
+    header={
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36 MicroMessenger/7.0.9.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat",
+        "Content-Type": "application/json;charset=UTF-8",
+        "Content-Length": "2",
+        "Host": "gw.wozaixiaoyuan.com",
+        "Accept-Language": "en-us,en",
+        "Accept": "application/json, text/plain, */*"
+    }
+    loginUrl="https://gw.wozaixiaoyuan.com/basicinfo/mobile/login/username"
+    data="{}"
+    session=requests.session()
+    url=loginUrl+"?username="+username+"&password="+password
+    resp=session.post(url,data=data,headers=header)
+    res = json.loads(resp.text)
+    if res["code"] == 0:
+        print("登陆成功")
+        jwsession = resp.headers['JWSESSION']
+        return jwsession
     else:
-       print(response['message'])
-       #requests.get('https://sc.ftqq.com/此处填写你的Serve酱SCKEY.send?text='+response['message']+'&desp=签到了失败了噢')
+        print(res)
+        print("登录失败，请检查账号信息")
+        status_code = 5
+        return False
 
-
-
-def main_handler(event, context):
-    return Autodo()
-
+def Auto():
+    jwsession=login(username,password)
+    url = "https://student.wozaixiaoyuan.com/health/save.json"
+    header={
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "User-Agent": "Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/81.0.4044.138 Safari/537.36 MicroMessenger/7.0.9.501 NetType/WIFI MiniProgramEnv/Windows WindowsWechat",
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Content-Length": "2",
+        "Host": "student.wozaixiaoyuan.com",
+        "Accept-Language": "en-us,en",
+        "Accept": "application/json, text/plain, */*",
+        "JWSESSION":str(jwsession)
+    }
+    data = {
+        'answers': '["0","36.5","36.5","36.5"]',
+        'latitude': '30.205023',
+        'longitude': '115.018481',
+        'country': '中国',
+        'city': '黄石市',
+        'district': '下陆区',
+        'province': '湖北省',
+        'township': '团城山街道',
+        'street': '磁湖路',
+        'areacode': '420204'
+    }
+    session = requests.session()
+    response =session.post(url=url, data=data, headers=header)
+    response = json.loads(response.text)
+    if response['code'] == -10:
+        print('jwsession 无效，将尝试使用账号信息重新登录')
+        status_code = 4
+        loginStatus =login()
+    elif response["code"] == 0:
+        print("打卡成功")
+    elif response['code'] == 1: 
+        print("打卡失败：今日健康打卡已结束")   
+    else:
+        print(response)
+        print("打卡失败")
+                
 if __name__ == '__main__':
-    Autodo()
+    Auto()
